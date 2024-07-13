@@ -5,6 +5,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 import logging
 from dotenv import load_dotenv
+import random
 
 # Load environment variables from .env file
 load_dotenv()
@@ -34,7 +35,7 @@ conversation_history = {}
 @bot.event
 async def on_ready():
     logger.info(f'We have logged in as {bot.user}')
-    await bot.change_presence(activity=discord.Game(name="Ask me anything!"))
+    await bot.change_presence(activity=discord.Game(name="Chatting with users!"))
 
 @bot.command(name='ask')
 async def ask(ctx, *, query: str):
@@ -59,11 +60,47 @@ async def ask(ctx, *, query: str):
         history.append(response_inputs)
         conversation_history[user_id] = history
 
-        await ctx.send(response_text)
-        logger.info('Message sent!')
+        # Add some personality to the response
+        responses = [
+            "🤖 AI says: ",
+            "🧙‍♂️ Wizard AI whispers: ",
+            "✨ Here's a thought: ",
+            "💬 AI responds: "
+        ]
+        personality_response = random.choice(responses) + response_text + " 😊"
+        
+        async with ctx.typing():
+            await ctx.send(personality_response)
+            logger.info('Message sent!')
     except Exception as e:
         logger.error(f'Error: {e}')
         await ctx.send('Sorry, there was an error processing your request. Please try again later.')
+
+@bot.command(name='joke')
+async def joke(ctx):
+    jokes = [
+        "Why don't scientists trust atoms? Because they make up everything!",
+        "Why did the computer go to the doctor? Because it had a virus!",
+        "How do robots pay for things? With cache!",
+    ]
+    response = random.choice(jokes)
+    await ctx.send(f"😂 Here's a joke for you: {response}")
+
+@bot.command(name='quote')
+async def quote(ctx):
+    quotes = [
+        "The only limit to our realization of tomorrow is our doubts of today. - Franklin D. Roosevelt",
+        "The future belongs to those who believe in the beauty of their dreams. - Eleanor Roosevelt",
+        "Do not watch the clock. Do what it does. Keep going. - Sam Levenson",
+    ]
+    response = random.choice(quotes)
+    await ctx.send(f"🌟 Inspirational Quote: {response}")
+
+@bot.command(name='clear_history')
+async def clear_history(ctx):
+    user_id = ctx.author.id
+    conversation_history[user_id] = []
+    await ctx.send("🧹 Your conversation history has been cleared!")
 
 @bot.event
 async def on_command_error(ctx, error):
