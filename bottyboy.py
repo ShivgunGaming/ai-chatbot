@@ -37,18 +37,39 @@ async def on_ready():
     logger.info(f'We have logged in as {bot.user}')
     await bot.change_presence(activity=discord.Game(name="Chatting with users!"))
 
+# Helper function to add personality to responses
+def add_personality(response_text):
+    responses = [
+        "🤖 AI says: ",
+        "🧙‍♂️ Wizard AI whispers: ",
+        "✨ Here's a thought: ",
+        "💬 AI responds: ",
+        "🔮 Mystic AI reveals: ",
+        "💡 Insightful AI shares: "
+    ]
+    personality_response = random.choice(responses) + response_text + " 😊"
+    return personality_response
+
+# Helper function to manage conversation history length
+def manage_conversation_history(user_id, new_entry, max_length=10):
+    history = conversation_history.get(user_id, [])
+    history.append(new_entry)
+    if len(history) > max_length:
+        history = history[-max_length:]
+    conversation_history[user_id] = history
+    return history
+
 @bot.command(name='ask')
 async def ask(ctx, *, query: str):
     user_id = ctx.author.id
     logger.info(f'Received message from {ctx.author}: {query}')
     
     try:
-        # Retrieve conversation history for user
-        history = conversation_history.get(user_id, [])
-        
         # Tokenize the input query
         inputs = tokenizer.encode(query + tokenizer.eos_token, return_tensors="pt")
-        history.append(inputs)
+
+        # Manage conversation history
+        history = manage_conversation_history(user_id, inputs)
 
         # Concatenate history and generate a response
         inputs = torch.cat(history, dim=-1)
@@ -57,20 +78,10 @@ async def ask(ctx, *, query: str):
 
         # Save the response in history
         response_inputs = tokenizer.encode(response_text + tokenizer.eos_token, return_tensors="pt")
-        history.append(response_inputs)
-        conversation_history[user_id] = history
+        manage_conversation_history(user_id, response_inputs)
 
-        # Add some personality to the response
-        responses = [
-            "🤖 AI says: ",
-            "🧙‍♂️ Wizard AI whispers: ",
-            "✨ Here's a thought: ",
-            "💬 AI responds: "
-        ]
-        personality_response = random.choice(responses) + response_text + " 😊"
-        
         async with ctx.typing():
-            await ctx.send(personality_response)
+            await ctx.send(add_personality(response_text))
             logger.info('Message sent!')
     except Exception as e:
         logger.error(f'Error: {e}')
@@ -82,6 +93,8 @@ async def joke(ctx):
         "Why don't scientists trust atoms? Because they make up everything!",
         "Why did the computer go to the doctor? Because it had a virus!",
         "How do robots pay for things? With cache!",
+        "Why was the math book sad? Because it had too many problems!",
+        "Why did the scarecrow become a successful neurosurgeon? Because he was outstanding in his field!"
     ]
     response = random.choice(jokes)
     await ctx.send(f"😂 Here's a joke for you: {response}")
@@ -92,6 +105,8 @@ async def quote(ctx):
         "The only limit to our realization of tomorrow is our doubts of today. - Franklin D. Roosevelt",
         "The future belongs to those who believe in the beauty of their dreams. - Eleanor Roosevelt",
         "Do not watch the clock. Do what it does. Keep going. - Sam Levenson",
+        "Believe you can and you're halfway there. - Theodore Roosevelt",
+        "The best way to predict the future is to create it. - Peter Drucker"
     ]
     response = random.choice(quotes)
     await ctx.send(f"🌟 Inspirational Quote: {response}")
@@ -101,6 +116,22 @@ async def clear_history(ctx):
     user_id = ctx.author.id
     conversation_history[user_id] = []
     await ctx.send("🧹 Your conversation history has been cleared!")
+
+@bot.command(name='ping')
+async def ping(ctx):
+    await ctx.send("🏓 Pong! The bot is responsive.")
+
+@bot.command(name='fact')
+async def fact(ctx):
+    facts = [
+        "Honey never spoils. Archaeologists have found pots of honey in ancient Egyptian tombs that are over 3,000 years old and still perfectly edible.",
+        "Octopuses have three hearts. Two pump blood to the gills, while the third pumps it to the rest of the body.",
+        "A day on Venus is longer than a year on Venus. It takes Venus 243 Earth days to rotate once on its axis, but only 225 Earth days to orbit the Sun.",
+        "Bananas are berries, but strawberries aren't. Botanically, a berry has seeds and pulp produced from the ovary of a single flower.",
+        "Humans share approximately 60% of their DNA with bananas."
+    ]
+    response = random.choice(facts)
+    await ctx.send(f"📚 Did you know? {response}")
 
 @bot.event
 async def on_command_error(ctx, error):
